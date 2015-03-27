@@ -16,8 +16,6 @@ const Version = "0.4.3"
 
 const api = "https://logs-01.loggly.com/bulk/{token}"
 
-type Message map[string]interface{}
-
 var debug = Debug("loggly")
 
 var nl = []byte{'\n'}
@@ -56,7 +54,7 @@ type Client struct {
 	Token string
 
 	// Default properties.
-	Defaults Message
+	Defaults map[string]interface{}
 	buffer   [][]byte
 	tags     []string
 	sync.Mutex
@@ -66,7 +64,7 @@ type Client struct {
 // Optionally pass `tags` or set them later with `.Tag()`.
 func New(token string, tags ...string) *Client {
 	host, err := os.Hostname()
-	defaults := Message{}
+	defaults := map[string]interface{}{}
 
 	if err == nil {
 		defaults["hostname"] = host
@@ -90,7 +88,7 @@ func New(token string, tags ...string) *Client {
 }
 
 // Send buffers `msg` for async sending.
-func (c *Client) Send(msg Message) error {
+func (c *Client) Send(msg map[string]interface{}) error {
 	if _, exists := msg["timestamp"]; !exists {
 		msg["timestamp"] = time.Now().UnixNano() / int64(time.Millisecond)
 	}
@@ -140,81 +138,81 @@ func (c *Client) Write(b []byte) (int, error) {
 }
 
 // Debug log.
-func (c *Client) Debug(t string, props ...Message) error {
+func (c *Client) Debug(t string, props ...map[string]interface{}) error {
 	if c.Level > DEBUG {
 		return nil
 	}
-	msg := Message{"level": "debug", "type": t}
+	msg := map[string]interface{}{"level": "debug", "type": t}
 	merge(msg, props...)
 	return c.Send(msg)
 }
 
 // Info log.
-func (c *Client) Info(t string, props ...Message) error {
+func (c *Client) Info(t string, props ...map[string]interface{}) error {
 	if c.Level > INFO {
 		return nil
 	}
-	msg := Message{"level": "info", "type": t}
+	msg := map[string]interface{}{"level": "info", "type": t}
 	merge(msg, props...)
 	return c.Send(msg)
 }
 
 // Notice log.
-func (c *Client) Notice(t string, props ...Message) error {
+func (c *Client) Notice(t string, props ...map[string]interface{}) error {
 	if c.Level > NOTICE {
 		return nil
 	}
-	msg := Message{"level": "notice", "type": t}
+	msg := map[string]interface{}{"level": "notice", "type": t}
 	merge(msg, props...)
 	return c.Send(msg)
 }
 
 // Warning log.
-func (c *Client) Warn(t string, props ...Message) error {
+func (c *Client) Warn(t string, props ...map[string]interface{}) error {
 	if c.Level > WARNING {
 		return nil
 	}
-	msg := Message{"level": "warning", "type": t}
+	msg := map[string]interface{}{"level": "warning", "type": t}
 	merge(msg, props...)
 	return c.Send(msg)
 }
 
 // Error log.
-func (c *Client) Error(t string, props ...Message) error {
+func (c *Client) Error(t string, props ...map[string]interface{}) error {
 	if c.Level > ERROR {
 		return nil
 	}
-	msg := Message{"level": "error", "type": t}
+	msg := map[string]interface{}{"level": "error", "type": t}
 	merge(msg, props...)
 	return c.Send(msg)
 }
 
 // Critical log.
-func (c *Client) Critical(t string, props ...Message) error {
+func (c *Client) Critical(t string, props ...map[string]interface{}) error {
 	if c.Level > CRITICAL {
 		return nil
 	}
-	msg := Message{"level": "critical", "type": t}
+	msg := map[string]interface{}{"level": "critical", "type": t}
 	merge(msg, props...)
 	return c.Send(msg)
 }
 
 // Alert log.
-func (c *Client) Alert(t string, props ...Message) error {
+func (c *Client) Alert(t string, props ...map[string]interface{}) error {
 	if c.Level > ALERT {
 		return nil
 	}
-	msg := Message{"level": "alert", "type": t}
+	msg := map[string]interface{}{"level": "alert", "type": t}
 	merge(msg, props...)
 	return c.Send(msg)
 }
 
 // Emergency log.
-func (c *Client) Emergency(t string, props ...Message) error {
+func (c *Client) Emergency(t string, props ...map[string]interface{}) error {
 	if c.Level > EMERGENCY {
 		return nil
 	}
-	msg := Message{"level": "emergency", "type": t}
+	msg := map[string]interface{}{"level": "emergency", "type": t}
 	merge(msg, props...)
 	return c.Send(msg)
 }
@@ -297,7 +295,7 @@ func (c *Client) start() {
 }
 
 // Merge others into a.
-func merge(a Message, others ...Message) {
+func merge(a map[string]interface{}, others ...map[string]interface{}) {
 	for _, msg := range others {
 		for k, v := range msg {
 			a[k] = v
