@@ -142,7 +142,7 @@ func (c *Client) Debug(t string, props ...map[string]interface{}) error {
 	if c.Level > DEBUG {
 		return nil
 	}
-	msg := map[string]interface{}{"level": "debug", "type": t}
+	msg := map[string]interface{}{"level": "debug", "component": t}
 	merge(msg, props...)
 	return c.Send(msg)
 }
@@ -152,7 +152,7 @@ func (c *Client) Info(t string, props ...map[string]interface{}) error {
 	if c.Level > INFO {
 		return nil
 	}
-	msg := map[string]interface{}{"level": "info", "type": t}
+	msg := map[string]interface{}{"level": "info", "component": t}
 	merge(msg, props...)
 	return c.Send(msg)
 }
@@ -162,7 +162,7 @@ func (c *Client) Notice(t string, props ...map[string]interface{}) error {
 	if c.Level > NOTICE {
 		return nil
 	}
-	msg := map[string]interface{}{"level": "notice", "type": t}
+	msg := map[string]interface{}{"level": "notice", "component": t}
 	merge(msg, props...)
 	return c.Send(msg)
 }
@@ -172,7 +172,7 @@ func (c *Client) Warn(t string, props ...map[string]interface{}) error {
 	if c.Level > WARNING {
 		return nil
 	}
-	msg := map[string]interface{}{"level": "warning", "type": t}
+	msg := map[string]interface{}{"level": "warning", "component": t}
 	merge(msg, props...)
 	return c.Send(msg)
 }
@@ -182,7 +182,7 @@ func (c *Client) Error(t string, props ...map[string]interface{}) error {
 	if c.Level > ERROR {
 		return nil
 	}
-	msg := map[string]interface{}{"level": "error", "type": t}
+	msg := map[string]interface{}{"level": "error", "component": t}
 	merge(msg, props...)
 	return c.Send(msg)
 }
@@ -192,7 +192,7 @@ func (c *Client) Critical(t string, props ...map[string]interface{}) error {
 	if c.Level > CRITICAL {
 		return nil
 	}
-	msg := map[string]interface{}{"level": "critical", "type": t}
+	msg := map[string]interface{}{"level": "critical", "component": t}
 	merge(msg, props...)
 	return c.Send(msg)
 }
@@ -202,7 +202,7 @@ func (c *Client) Alert(t string, props ...map[string]interface{}) error {
 	if c.Level > ALERT {
 		return nil
 	}
-	msg := map[string]interface{}{"level": "alert", "type": t}
+	msg := map[string]interface{}{"level": "alert", "component": t}
 	merge(msg, props...)
 	return c.Send(msg)
 }
@@ -212,7 +212,7 @@ func (c *Client) Emergency(t string, props ...map[string]interface{}) error {
 	if c.Level > EMERGENCY {
 		return nil
 	}
-	msg := map[string]interface{}{"level": "emergency", "type": t}
+	msg := map[string]interface{}{"level": "emergency", "component": t}
 	merge(msg, props...)
 	return c.Send(msg)
 }
