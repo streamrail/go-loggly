@@ -62,7 +62,7 @@ type Client struct {
 
 // New returns a new loggly client with the given `token`.
 // Optionally pass `tags` or set them later with `.Tag()`.
-func New(token string, tags ...string) *Client {
+func New(token string, bufferSize int, tags ...string) *Client {
 	host, err := os.Hostname()
 	defaults := map[string]interface{}{}
 
@@ -72,7 +72,7 @@ func New(token string, tags ...string) *Client {
 
 	c := &Client{
 		Level:         INFO,
-		BufferSize:    100,
+		BufferSize:    bufferSize,
 		FlushInterval: 5 * time.Second,
 		Token:         token,
 		Endpoint:      strings.Replace(api, "{token}", token, 1),
