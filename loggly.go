@@ -54,15 +54,16 @@ type Client struct {
 	Token string
 
 	// Default properties.
-	Defaults map[string]interface{}
-	buffer   [][]byte
-	tags     []string
+	Defaults   map[string]interface{}
+	buffer     [][]byte
+	tags       []string
+	MinimalLog bool
 	sync.Mutex
 }
 
 // New returns a new loggly client with the given `token`.
 // Optionally pass `tags` or set them later with `.Tag()`.
-func New(token string, bufferSize int, tags ...string) *Client {
+func New(token string, bufferSize int, minLog bool, tags ...string) *Client {
 	host, err := os.Hostname()
 	defaults := map[string]interface{}{}
 
@@ -77,6 +78,7 @@ func New(token string, bufferSize int, tags ...string) *Client {
 		Token:         token,
 		Endpoint:      strings.Replace(api, "{token}", token, 1),
 		buffer:        make([][]byte, 0),
+		MinimalLog:    minLog,
 		Defaults:      defaults,
 	}
 
@@ -89,10 +91,18 @@ func New(token string, bufferSize int, tags ...string) *Client {
 
 // Send buffers `msg` for async sending.
 func (c *Client) Send(msg map[string]interface{}) error {
-	if _, exists := msg["timestamp"]; !exists {
-		msg["timestamp"] = time.Now().UnixNano() / int64(time.Millisecond)
+	if c.MinimalLog {
+		delete(msg, "filename")
+		delete(msg, "func")
+		delete(msg, "hostname")
+		delete(msg, "line")
+		delete(msg, "timestamp")
+	} else {
+		if _, exists := msg["timestamp"]; !exists {
+			msg["timestamp"] = time.Now().UnixNano() / int64(time.Millisecond)
+		}
+		merge(msg, c.Defaults)
 	}
-	merge(msg, c.Defaults)
 
 	json, err := Marshal(msg)
 	if err != nil {
