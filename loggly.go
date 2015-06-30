@@ -55,7 +55,7 @@ type Client struct {
 
 	// Default properties.
 	Defaults   map[string]interface{}
-	buffer     [][]byte
+	buffer     map[string][][]byte
 	tags       []string
 	MinimalLog bool
 	sync.Mutex
@@ -77,7 +77,7 @@ func New(token string, bufferSize int, minLog bool, tags ...string) *Client {
 		FlushInterval: 5 * time.Second,
 		Token:         token,
 		Endpoint:      strings.Replace(api, "{token}", token, 1),
-		buffer:        make([][]byte, 0),
+		buffer:        make(map[string][][]byte),
 		MinimalLog:    minLog,
 		Defaults:      defaults,
 	}
@@ -96,7 +96,6 @@ func (c *Client) Send(msg map[string]interface{}) error {
 		delete(msg, "func")
 		delete(msg, "hostname")
 		delete(msg, "line")
-		delete(msg, "timestamp")
 	} else {
 		if _, exists := msg["timestamp"]; !exists {
 			msg["timestamp"] = time.Now().UnixNano() / int64(time.Millisecond)
@@ -104,6 +103,12 @@ func (c *Client) Send(msg map[string]interface{}) error {
 		merge(msg, c.Defaults)
 	}
 
+	var tagbuffer string
+	if val, ok := msg["partnerID"]; ok {
+		tagbuffer = val.(string)
+	} else {
+		tagbuffer = "notag"
+	}
 	json, err := Marshal(msg)
 	if err != nil {
 		return err
@@ -116,9 +121,9 @@ func (c *Client) Send(msg map[string]interface{}) error {
 		fmt.Fprintf(c.Writer, "%s\n", string(json))
 	}
 
-	c.buffer = append(c.buffer, json)
+	c.buffer[tagbuffer] = append(c.buffer[tagbuffer], json)
 
-	debug("buffer (%d/%d) %v", len(c.buffer), c.BufferSize, msg)
+	debug("buffer (%d/%d) %v", len(c.buffer[tagbuffer]), c.BufferSize, msg)
 
 	if len(c.buffer) >= c.BufferSize {
 		go c.Flush()
@@ -136,7 +141,7 @@ func (c *Client) Write(b []byte) (int, error) {
 		fmt.Fprintf(c.Writer, "%s", b)
 	}
 
-	c.buffer = append(c.buffer, b)
+	c.buffer["notag"] = append(c.buffer["notag"], b)
 
 	debug("buffer (%d/%d) %q", len(c.buffer), c.BufferSize, b)
 
@@ -230,51 +235,52 @@ func (c *Client) Emergency(t string, props ...map[string]interface{}) error {
 // Flush the buffered messages.
 func (c *Client) Flush() error {
 	c.Lock()
+	for k, _ := range c.buffer {
+		if len(c.buffer[k]) == 0 {
+			debug("no messages to flush")
+			continue
+		}
 
-	if len(c.buffer) == 0 {
-		debug("no messages to flush")
-		c.Unlock()
-		return nil
+		debug("flushing %d messages", len(c.buffer[k]))
+		body := bytes.Join(c.buffer[k], nl)
+
+		c.buffer[k] = nil
+
+		client := &http.Client{}
+		debug("POST %s with %d bytes", c.Endpoint, len(body))
+		req, err := http.NewRequest("POST", c.Endpoint, bytes.NewBuffer(body))
+		if err != nil {
+			debug("error: %v", err)
+			return err
+		}
+
+		req.Header.Add("User-Agent", "go-loggly (version: "+Version+")")
+		req.Header.Add("Content-Type", "text/plain")
+		req.Header.Add("Content-Length", string(len(body)))
+
+		tags := k
+		if tags != "notag" {
+			req.Header.Add("X-Loggly-Tag", tags)
+		}
+
+		res, err := client.Do(req)
+		if err != nil {
+			debug("error: %v", err)
+			return err
+		}
+
+		defer res.Body.Close()
+
+		debug("%d response", res.StatusCode)
+		if res.StatusCode >= 400 {
+			resp, _ := ioutil.ReadAll(res.Body)
+			debug("error: %s", string(resp))
+			return err
+		}
+
 	}
-
-	debug("flushing %d messages", len(c.buffer))
-	body := bytes.Join(c.buffer, nl)
-
-	c.buffer = nil
 	c.Unlock()
-
-	client := &http.Client{}
-	debug("POST %s with %d bytes", c.Endpoint, len(body))
-	req, err := http.NewRequest("POST", c.Endpoint, bytes.NewBuffer(body))
-	if err != nil {
-		debug("error: %v", err)
-		return err
-	}
-
-	req.Header.Add("User-Agent", "go-loggly (version: "+Version+")")
-	req.Header.Add("Content-Type", "text/plain")
-	req.Header.Add("Content-Length", string(len(body)))
-
-	tags := c.tagsList()
-	if tags != "" {
-		req.Header.Add("X-Loggly-Tag", tags)
-	}
-
-	res, err := client.Do(req)
-	if err != nil {
-		debug("error: %v", err)
-		return err
-	}
-
-	defer res.Body.Close()
-
-	debug("%d response", res.StatusCode)
-	if res.StatusCode >= 400 {
-		resp, _ := ioutil.ReadAll(res.Body)
-		debug("error: %s", string(resp))
-	}
-
-	return err
+	return nil
 }
 
 // Tag adds the given `tags` for all logs.
