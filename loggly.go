@@ -234,16 +234,17 @@ func (c *Client) Emergency(t string, props ...map[string]interface{}) error {
 
 // Flush the buffered messages.
 func (c *Client) Flush() error {
-	c.Lock()
 	for k, _ := range c.buffer {
 		if len(c.buffer[k]) == 0 {
 			debug("no messages to flush")
 			continue
 		}
-
+		//Lock mutex per buffer in map
+		c.Lock()
 		debug("flushing %d messages", len(c.buffer[k]))
 		body := bytes.Join(c.buffer[k], nl)
-
+		//release mutex after buffer emptyed
+		c.Unlock()
 		c.buffer[k] = nil
 
 		client := &http.Client{}
@@ -279,7 +280,6 @@ func (c *Client) Flush() error {
 		}
 
 	}
-	c.Unlock()
 	return nil
 }
 
